@@ -1,0 +1,18 @@
+{
+  "name": "roblox-2stepverification",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/local-auth": "^3.0.0",
+    "googleapis": "^128.0.0",
+    "noblox.js": "^4.15.0",
+    "zoblox.js": "^4.11.0"
+  }
+}

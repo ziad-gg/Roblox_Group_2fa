@@ -1,7 +1,9 @@
+// Importing required modules
 const noblox = require('noblox.js');
 const { REST, Routes } = require('zoblox.js');
 const mail = require('./google.js');
 
+// Class for creating the Payout request body
 class PayoutRequestBody {
     static create(userId, amount) {
         return {
@@ -20,6 +22,7 @@ class PayoutRequestBody {
 /** @type {import('zoblox.js').REST} */
 let restInstance = null;
 
+// Class for handling REST operations
 class Rest {
     static get instance() {
         if (!restInstance) {
@@ -27,11 +30,14 @@ class Rest {
         }
         return restInstance;
     }
+
+    // Set cookie for REST instance
     static async setCookie() {
-        await restInstance.setCookie(require('./config.json')[0])
+        await restInstance.setCookie(require('./config.json')[0]);
     }
 }
 
+// Class for asynchronous payout management
 class AsyncPayoutManager {
     static get Rest() {
         const rest = Rest.instance;
@@ -39,7 +45,7 @@ class AsyncPayoutManager {
     }
 
     /**
-     * 
+     * Report an event
      * @param {'Generic_TwoStepVerification_Initialized' | 'Generic_TwoStepVerification_Initialized_unknown'} name 
      * @returns {Promise<{}>}
      */
@@ -48,6 +54,7 @@ class AsyncPayoutManager {
     }
 
     /**
+     * Record a metric
      * @param {'event_2sv' | 'event_generic'} name 
      * @returns {Promise<{}>}
      */
@@ -73,7 +80,7 @@ class AsyncPayoutManager {
     }
 
     /**
-     * 
+     * Get challenge metadata
      * @param {number} userId 
      * @param {number} ChallengeId 
      * @returns {Promise<{}>}
@@ -82,28 +89,32 @@ class AsyncPayoutManager {
         return await AsyncPayoutManager.Rest.get(`https://twostepverification.roblox.com/v1/metadata?userId=${userId}&challengeId=${ChallengeId}&actionType=Generic`);
     }
 
+    // Get challenge configuration
     static async ChallangeConfiguration(userId, ChallengeId) {
         return new Promise((ProcessingInvokeingFunc, PromiseRejectionFunc) => {
-            AsyncPayoutManager.Rest.get(`https://twostepverification.roblox.com/v1/users/${userId}/configuration?challengeId=${ChallengeId}&actionType=Generic`).then(({ data }) => {
-                ProcessingInvokeingFunc(data.primaryMediaType.toLowerCase())
-            }).catch(PromiseRejectionFunc)
-        })
+            AsyncPayoutManager.Rest.get(`https://twostepverification.roblox.com/v1/users/${userId}/configuration?challengeId=${ChallengeId}&actionType=Generic`)
+                .then(({ data }) => {
+                    ProcessingInvokeingFunc(data.primaryMediaType.toLowerCase());
+                })
+                .catch(PromiseRejectionFunc);
+        });
     }
+
     /**
-     * 
+     * Check user's payout eligibility
      * @param {number} groupId 
      * @param {number} userId 
      * @returns {boolean}
      */
     static async UserPayoutEligibilit(groupId, userId) {
         const { data } = await AsyncPayoutManager.Rest.get(`https://economy.roblox.com/v1/groups/${groupId}/users-payout-eligibility?userIds=${userId}`).catch(e => {
-            return { data: { usersGroupPayoutEligibility: null } }
+            return { data: { usersGroupPayoutEligibility: null } };
         });
-        return data.usersGroupPayoutEligibility?.[userId.toString()] ? true : false
+        return data.usersGroupPayoutEligibility?.[userId.toString()] ? true : false;
     }
 
     /**
-     * 
+     * Verify payout
      * @param {number | string} userId 
      * @param {string} ChallengeId 
      * @param {number | string} verificationCode 
@@ -118,35 +129,45 @@ class AsyncPayoutManager {
                     actionType: 'Generic',
                     code: verificationCode,
                 }
-            }).catch(({ response }) => {
-                const errors = response.data.errors;
-                if (errors.find(e => e.code === 1)) PromiseRejectionFunc(new Error('Invalid challenge ID.'));
-                if (errors.find(e => e.code === 5)) PromiseRejectionFunc(new Error('Too many requests.'));
-                if (errors.find(e => e.code === 9)) PromiseRejectionFunc(new Error('The two step verification configuration is invalid for this action.'));
-                if (errors.find(e => e.code === 10)) PromiseRejectionFunc(new Error('The two step verification challenge code is invalid.'));
-                else PromiseRejectionFunc(new Error('(Unkown Error Code) Two step verification is currently under maintenance'));
-            }).then(ProcessingInvokeingFunc)
-        })
+            })
+                .catch(({ response }) => {
+                    const errors = response.data.errors;
+                    if (errors.find(e => e.code === 1)) PromiseRejectionFunc(new Error('Invalid challenge ID.'));
+                    if (errors.find(e => e.code === 5)) PromiseRejectionFunc(new Error('Too many requests.'));
+                    if (errors.find(e => e.code === 9)) PromiseRejectionFunc(new Error('The two-step verification configuration is invalid for this action.'));
+                    if (errors.find(e => e.code === 10)) PromiseRejectionFunc(new Error('The two-step verification challenge code is invalid.'));
+                    else PromiseRejectionFunc(new Error('(Unknown Error Code) Two-step verification is currently under maintenance'));
+                })
+                .then(ProcessingInvokeingFunc);
+        });
     }
 }
 
 /**
- * 
+ * Wait for a specified time
  * @param {number} T 
  * @returns {Promise<void>}
  */
 const wait = (T) => new Promise((res) => setTimeout(res, T));
 
-
+/**
+ * Main function
+ */
 async function Main() {
+    // Set cookie for noblox
     const User = await noblox.setCookie(require('./config.json')[0]);
     console.log(`${User.UserName} is ready`);
+    
+    // Initialize REST instance and set cookie
     Rest.instance;
     await Rest.setCookie();
-    await Payout('8059703', 'YG_TOPR', 1)
+    
+    // Example Payout function call
+    await Payout('8059703', 'YG_TOPR', 1);
 }
+
 /**
- * 
+ * Payout function
  * @param {number | string} groupId 
  * @param {string} username 
  * @param {number} amount 
@@ -156,30 +177,35 @@ async function Payout(groupId, username, amount) {
     const userId = await noblox.getIdFromUsername(username);
     const isUserEligibilit = await AsyncPayoutManager.UserPayoutEligibilit(groupId, userId);
 
-    if (!isUserEligibilit) return new Error("bla bla");
+    if (!isUserEligibilit) return new Error("User is not eligible for payout");
 
     const requestBody = PayoutRequestBody.create(userId, amount);
 
     const instance = Rest.instance;
     await Rest.setCookie();
 
+    // Example REST API call for Payout
     await instance.post(Routes.groups.payouts(groupId), {
         data: requestBody
     }).then((data) => {
-        console.log(data)
+        console.log(data);
     }).catch(async e => {
+        // Handle payout verification challenge
         const rblxChallengeMetadata = e.response.headers['rblx-challenge-metadata'];
-
         const buffer = Buffer.from(rblxChallengeMetadata, 'base64');
         const data = JSON.parse(buffer.toString('utf-8'));
 
         await PayoutVerify(data.challengeId, username);
-
         await Payout(groupId, username, amount);
     });
-
 }
 
+/**
+ * Payout verification function
+ * @param {string} ChallengeId 
+ * @param {string} username 
+ * @param {string} groupId 
+ */
 async function PayoutVerify(ChallengeId, username, groupId) {
     const userId = await noblox.getIdFromUsername(username);
 
@@ -217,11 +243,10 @@ async function PayoutVerify(ChallengeId, username, groupId) {
     if (verificationCode) {
         console.log('Proceeding with the verification process using the obtained code...');
         await AsyncPayoutManager.PayoutVerify(userId, ChallengeId, verificationCode, type);
-
     } else if (!verificationCode) {
         console.log('Unable to retrieve the verification code automatically. Please complete the 2-Step Verification process manually.');
     }
-
 }
 
+// Call the main function
 Main();
